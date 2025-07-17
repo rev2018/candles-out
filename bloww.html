@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Happy Birthday 🎂</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: 'Arial', sans-serif;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    #container {
+      margin-top: 50px;
+    }
+
+    #cake {
+      margin: 20px auto;
+      width: 200px;
+      height: 200px;
+      background: pink;
+      border-radius: 20px;
+      box-shadow: 0 0 20px #ff69b4;
+      position: relative;
+    }
+
+    .candle {
+      width: 10px;
+      height: 30px;
+      background: #fff;
+      position: absolute;
+      bottom: 180px;
+      animation: flicker 1s infinite alternate;
+    }
+
+    .flame {
+      width: 10px;
+      height: 10px;
+      background: orange;
+      border-radius: 50%;
+      position: absolute;
+      top: -10px;
+      left: 0;
+      right: 0;
+      margin: auto;
+      animation: flameFlicker 0.3s infinite alternate;
+    }
+
+    @keyframes flameFlicker {
+      from { transform: scale(1); opacity: 1; }
+      to { transform: scale(1.2); opacity: 0.8; }
+    }
+
+    #sliderContainer {
+      margin-top: 20px;
+    }
+
+    #status {
+      font-size: 24px;
+      margin-top: 30px;
+      color: #ff69b4;
+    }
+
+    #confetti {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 999;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1>🎉 Birthday Celebration 🎉</h1>
+
+    <div id="sliderContainer">
+      <label for="ageSlider">Select Age: <span id="ageValue">17</span></label>
+      <input type="range" min="1" max="100" value="17" id="ageSlider">
+    </div>
+
+    <div id="cake"></div>
+
+    <p id="status">Waiting for microphone access...</p>
+  </div>
+
+  <canvas id="confetti"></canvas>
+
+  <script>
+    const cake = document.getElementById('cake');
+    const ageSlider = document.getElementById('ageSlider');
+    const ageValue = document.getElementById('ageValue');
+    const status = document.getElementById('status');
+
+    function renderCandles(count) {
+      cake.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        const candle = document.createElement('div');
+        candle.className = 'candle';
+        candle.style.left = `${10 + i * (180 / count)}px`;
+
+        const flame = document.createElement('div');
+        flame.className = 'flame';
+        flame.classList.add('flame-on');
+
+        candle.appendChild(flame);
+        cake.appendChild(candle);
+      }
+    }
+
+    ageSlider.addEventListener('input', () => {
+      ageValue.textContent = ageSlider.value;
+      renderCandles(ageSlider.value);
+    });
+
+    renderCandles(ageSlider.value);
+
+    // Mic blow detection
+    async function setupMic() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        status.textContent = "Mic ready! Blow to extinguish candles...";
+        const context = new (window.AudioContext || window.webkitAudioContext)();
+        const source = context.createMediaStreamSource(stream);
+        const analyser = context.createAnalyser();
+        analyser.fftSize = 512;
+        source.connect(analyser);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+
+        function checkVolume() {
+          analyser.getByteFrequencyData(data);
+          const avg = data.reduce((a, b) => a + b) / data.length;
+          if (avg > 30) {
+            extinguishCandles();
+          }
+          requestAnimationFrame(checkVolume);
+        }
+        checkVolume();
+      } catch (err) {
+        status.textContent = "Mic access denied.";
+        console.error(err);
+      }
+    }
+
+    function extinguishCandles() {
+      const flames = document.querySelectorAll('.flame');
+      flames.forEach(f => f.style.display = 'none');
+      status.textContent = `🎂 Happy ${ageSlider.value}th Birthday! 🎂`;
+      launchConfetti();
+    }
+
+    setupMic();
+
+    // Confetti
+    const canvas = document.getElementById('confetti');
+    const ctx = canvas.getContext('2d');
+    let confetti = [];
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function launchConfetti() {
+      for (let i = 0; i < 200; i++) {
+        confetti.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height - canvas.height,
+          r: Math.random() * 6 + 4,
+          d: Math.random() * 10 + 5,
+          color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+          tilt: Math.random() * 10 - 5
+        });
+      }
+    }
+
+    function drawConfetti() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      confetti.forEach(c => {
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.fillStyle = c.color;
+        ctx.fill();
+        c.y += c.d;
+        c.x += Math.sin(c.tilt);
+      });
+      confetti = confetti.filter(c => c.y < canvas.height + 20);
+      requestAnimationFrame(drawConfetti);
+    }
+
+    drawConfetti();
+  </script>
+</body>
+</html>
